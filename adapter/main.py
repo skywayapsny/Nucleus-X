@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -220,10 +221,20 @@ async def _rate_limiter_cleanup_task() -> None:
             logger.warning("RateLimiter cleanup error: %s", exc)
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Manage application lifespan events."""
+    # Startup
+    asyncio.create_task(_rate_limiter_cleanup_task())
+    yield
+    # Shutdown
+
+
 app = FastAPI(
     title=_api_title(),
     description="Local GGUF inference with OpenAI-compatible HTTP APIs and policy guards",
     version="0.2.0",
+    lifespan=_lifespan,
 )
 app.add_middleware(
     TrustedHostMiddleware,
@@ -234,12 +245,6 @@ app.add_middleware(
     ],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-
-
-@app.on_event("startup")
-async def _startup_background_tasks() -> None:
-    """Start background tasks on app startup."""
-    asyncio.create_task(_rate_limiter_cleanup_task())
 
 
 @app.exception_handler(Exception)
