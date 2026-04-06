@@ -28,8 +28,6 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-`llama-cpp-python` is listed in `requirements.txt`, but the runtime is imported lazily. The server can start and pass smoke tests without loading the model until an inference request arrives.
-
 ## Configuration
 
 Copy `.env.example` to `.env` and set at least:
